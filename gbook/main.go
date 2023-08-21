@@ -12,17 +12,24 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"net/http"
 	"strings"
 	"time"
 )
 
 func main() {
 	// 初始化
-	db := initDB()
-	server := initWebServer()
+	//db := initDB()
+	//server := initWebServer()
+	//
+	//u := initUser(db)
+	//u.RegisterRoutes(server)
 
-	u := initUser(db)
-	u.RegisterRoutes(server)
+	server := gin.Default()
+
+	server.GET("/hello", func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "你好，你来了")
+	})
 
 	server.Run(":8080") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
@@ -44,7 +51,7 @@ func initWebServer() *gin.Engine {
 		//AllowOrigins: []string{"*"},
 		//AllowMethods: []string{"POST", "GET"},
 		AllowHeaders: []string{"Content-Type", "Authorization"},
-		// 你不加这个，前端是拿不到的
+		// 允许前端拿到哪些header，你不加这个，前端是拿不到的 jwt token
 		ExposeHeaders: []string{"x-jwt-token"},
 		// 是否允许你带 cookie 之类的东西
 		AllowCredentials: true,
@@ -80,12 +87,12 @@ func initWebServer() *gin.Engine {
 	// cookie 的名字叫 mysession
 	server.Use(sessions.Sessions("mysession", store))
 	// 步骤3
-	server.Use(middleware.NewLoginMiddlewareBuilder().
-		IgnorePaths("/users/signup").
-		IgnorePaths("/users/login").Build())
-	//server.Use(middleware.NewLoginJWTMiddlewareBuilder().
+	//server.Use(middleware.NewLoginMiddlewareBuilder().
 	//	IgnorePaths("/users/signup").
 	//	IgnorePaths("/users/login").Build())
+	server.Use(middleware.NewLoginJWTMiddlewareBuilder().
+		IgnorePaths("/users/signup").
+		IgnorePaths("/users/login").Build())
 
 	// v1
 	//middleware.IgnorePaths = []string{"sss"}

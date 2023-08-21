@@ -7,7 +7,9 @@ import (
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
+	"time"
 )
 
 const (
@@ -157,7 +159,6 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 		Password string `json:"password"`
 	}
 
-	// 接收 用户登录信息
 	var req LoginReq
 	if err := ctx.Bind(&req); err != nil {
 		return
@@ -167,28 +168,30 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "用户名或密码不对")
 		return
 	}
-
 	if err != nil {
 		ctx.String(http.StatusOK, "系统错误")
 		return
 	}
 
-	//ctx.String(http.StatusOK, "登录成功")
-
 	// 步骤2
-	// 在这里登录成功了
-	// 设置 session
-	sess := sessions.Default(ctx)
-	// 我可以随便设置值了
-	// 你要放在 session 里面的值
-	sess.Set("userId", user.Id)
-	sess.Options(sessions.Options{
-		Secure:   true,
-		HttpOnly: true,
-		// 一分钟过期
-		MaxAge: 60,
-	})
-	sess.Save()
+	// 在这里用 JWT 设置登录态
+	// 生成一个 JWT token
+
+	claims := UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+		Uid:       user.Id,
+		UserAgent: ctx.Request.UserAgent(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	tokenStr, err := token.SignedString([]byte("95osj3fUD7fo0mlYdDbncXz4VD2igvf0"))
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "系统错误")
+		return
+	}
+	ctx.Header("x-jwt-token", tokenStr)
+	fmt.Println(user)
 	ctx.String(http.StatusOK, "登录成功")
 	return
 }
@@ -197,6 +200,34 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 
 }
 
+func (u *UserHandler) ProfileJWT(ctx *gin.Context) {
+	c, _ := ctx.Get("claims")
+	// 你可以断定，必然有 claims
+	//if !ok {
+	//	// 你可以考虑监控住这里
+	//	ctx.String(http.StatusOK, "系统错误")
+	//	return
+	//}
+	// ok 代表是不是 *UserClaims
+	claims, ok := c.(*UserClaims)
+	if !ok {
+		// 你可以考虑监控住这里
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	println(claims.Uid)
+	ctx.String(http.StatusOK, "你的 profile")
+	// 这边就是你补充 profile 的其它代码
+}
+
 func (u *UserHandler) Profile(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "hello")
+	ctx.String(http.StatusOK, "这是你的 Profile")
+}
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	// 声明你自己的要放进去 token 里面的数据
+	Uid int64
+	// 自己随便加
+	UserAgent string
 }

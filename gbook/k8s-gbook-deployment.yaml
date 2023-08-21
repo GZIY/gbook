@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gbook-live
+#  specification
+spec:
+  #  副本数量
+  replicas: 3
+  selector:
+    matchLabels:
+      app: gbook-live
+  #      template 描述的是你的 POD 是什么样的
+  template:
+    metadata:
+      labels:
+        app: gbook-live
+    #    POD 的具体信息
+    spec:
+      containers:
+        - name: gbook
+          image: flycash/gbook-live:v0.0.1
+          ports:
+            - containerPort: 8080
